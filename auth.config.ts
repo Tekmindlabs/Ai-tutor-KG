@@ -19,7 +19,7 @@ interface CustomUser extends User {
   onboarded?: boolean;
 }
 
-export const authConfig = {
+export const authConfig: NextAuthConfig = {
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
