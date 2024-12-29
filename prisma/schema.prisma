@@ -13,10 +13,63 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  onboarded     Boolean   @default(false)
+  phoneNumber   String?
+  age           Int?
+  interests     String[]
+  consentDate   DateTime?
   accounts      Account[]
   sessions      Session[]
-  lessons       Lesson[]
-  progress      Progress[]
+  chats         Chat[]
+  notes         Notes[]
+  tags          Tags[]
+  sharedContent SharedContent[]
+}
+
+model Chat {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String   @db.Text
+  response  String   @db.Text
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Notes {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  vectors   Vectors[]
+}
+
+model Tags {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Vectors {
+  id          String   @id @default(cuid())
+  contentType String
+  contentId   String
+  embedding   Float[]
+  note        Notes    @relation(fields: [contentId], references: [id])
+}
+
+model SharedContent {
+  id           String   @id @default(cuid())
+  ownerId      String
+  sharedWithId String
+  contentType  String
+  contentId    String
+  permissions  String[]
+  createdAt    DateTime @default(now())
+  owner        User     @relation(fields: [ownerId], references: [id])
 }
 
 model Account {
@@ -44,28 +97,4 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Lesson {
-  id          String     @id @default(cuid())
-  title       String
-  content     String     @db.Text
-  difficulty  String
-  userId      String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  user        User       @relation(fields: [userId], references: [id])
-  progress    Progress[]
-}
-
-model Progress {
-  id        String   @id @default(cuid())
-  lessonId  String
-  userId    String
-  score     Int
-  completed Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  lesson    Lesson   @relation(fields: [lessonId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
 }
