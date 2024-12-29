@@ -36,33 +36,69 @@ declare module "next-auth" {
   }
 }
 
+
 export const authConfig: NextAuthConfig = {
+
   providers: [
+
     Email({
+
+      server: process.env.RESEND_API_KEY, // Add this line
+
       from: process.env.RESEND_FROM!,
+
       maxAge: 24 * 60 * 60,
+
       generateVerificationToken: async () => {
+
         return crypto.randomUUID();
+
       },
-      sendVerificationRequest: async ({ identifier: email, url }) => {
+
+      async sendVerificationRequest({ identifier: email, url }) {
+
         const user = await prisma.user.findUnique({
+
           where: { email },
+
           select: { 
+
             name: true,
+
             emailVerified: true,
+
           }
+
         });
+
 
         const emailTemplate = user?.name 
+
           ? signInEmail(user.name, url)
+
           : welcomeEmail("there");
 
-        await sendEmail({
-          to: email,
-          from: process.env.RESEND_FROM!,
-          template: emailTemplate,
-        });
+
+        try {
+
+          await sendEmail({
+
+            to: email,
+
+            from: process.env.RESEND_FROM!,
+
+            template: emailTemplate,
+
+          });
+
+        } catch (error) {
+
+          throw new Error(`Error sending verification email: ${error}`);
+
+        }
+
       },
+
     }),
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
