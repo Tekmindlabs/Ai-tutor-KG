@@ -3,5 +3,4 @@ import { authConfig } from "@/auth.config"
 
 const handler = NextAuth(authConfig)
 
-export const GET = handler
-export const POST = handler
+export { handler as GET, handler as POST }
