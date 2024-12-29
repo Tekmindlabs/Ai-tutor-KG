@@ -7,14 +7,29 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Remove the authentication check from root layout
-  return (
-    <html lang="en">
-      <body>
-        <main className="min-h-screen bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-black">
-          {children}
-        </main>
-      </body>
-    </html>
-  )
+  try {
+    return (
+      <html lang="en">
+        <head>
+          {/* Add proper DOCTYPE */}
+          <meta charSet="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+        </head>
+        <body>
+          <main className="min-h-screen bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-black">
+            {children}
+          </main>
+        </body>
+      </html>
+    )
+  } catch (error) {
+    console.error('Layout error:', error)
+    return (
+      <html lang="en">
+        <body>
+          <div>Something went wrong. Please try again later.</div>
+        </body>
+      </html>
+    )
+  }
 }
