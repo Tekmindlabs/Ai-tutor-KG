@@ -1,5 +1,4 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
+import { headers } from 'next/headers'
 
 export default async function RootLayout({
   children,
@@ -7,12 +6,14 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
+  const headersList = headers();
+  const pathname = headersList.get("x-pathname") || "";
   
   if (!session) {
     redirect("/api/auth/signin");
   }
 
-  if (!session.user.onboarded && !window.location.pathname.includes("/onboarding")) {
+  if (!session.user.onboarded && !pathname.includes("/onboarding")) {
     redirect("/onboarding");
   }
 
