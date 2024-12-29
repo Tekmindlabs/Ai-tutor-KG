@@ -1,24 +1,13 @@
+// /app/layout.tsx
 import { headers } from 'next/headers'
 import { auth } from '@/auth'
-import { redirect } from 'next/navigation'
 
 export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth()
-  const headersList = headers()
-  const pathname = headersList.get("x-pathname") || ""
-  
-  if (!session) {
-    redirect("/auth/signin")
-  }
-
-  if (!session.user?.onboarded && !pathname.includes("/onboarding")) {
-    redirect("/onboarding")
-  }
-
+  // Remove the authentication check from root layout
   return (
     <html lang="en">
       <body>
