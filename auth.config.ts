@@ -1,17 +1,18 @@
-// auth.config.ts
 import Google from "next-auth/providers/google";
 import Email from "next-auth/providers/email";
-import { NextAuthConfig } from "next-auth";
+import type { NextAuthConfig } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/send";
 import { signInEmail, welcomeEmail } from "@/lib/email/templates";
 import crypto from 'crypto';
+import type { User as PrismaUser } from '@prisma/client';
+import type { JWT } from 'next-auth/jwt';
 
 // Extend the built-in types
 declare module "next-auth" {
   interface Session {
     user: {
-      id: string;
+      id?: string;
       email?: string | null;
       name?: string | null;
       image?: string | null;
@@ -24,8 +25,8 @@ declare module "next-auth" {
     }
   }
 
-  interface User {
-    id: string;
+  interface User extends PrismaUser {
+    id?: string;
     onboarded: boolean;
     role?: string;
     preferences?: {
@@ -39,23 +40,20 @@ export const authConfig: NextAuthConfig = {
   providers: [
     Email({
       server: {
-        host: process.env.EMAIL_SERVER_HOST,
+        host: process.env.EMAIL_SERVER_HOST!,
         port: Number(process.env.EMAIL_SERVER_PORT),
         auth: {
-          user: process.env.EMAIL_SERVER_USER,
-          pass: process.env.EMAIL_SERVER_PASSWORD,
+          user: process.env.EMAIL_SERVER_USER!,
+          pass: process.env.EMAIL_SERVER_PASSWORD!,
         },
         secure: true,
       },
-      from: process.env.RESEND_FROM,
+      from: process.env.RESEND_FROM!,
       maxAge: 24 * 60 * 60,
-      async generateVerificationToken() {
+      generateVerificationToken: async () => {
         return crypto.randomUUID();
       },
-      async sendVerificationRequest({
-        identifier: email,
-        url,
-      }) {
+      sendVerificationRequest: async ({ identifier: email, url }) => {
         const user = await prisma.user.findUnique({
           where: { email },
           select: { 
@@ -66,7 +64,7 @@ export const authConfig: NextAuthConfig = {
 
         const emailTemplate = user?.name 
           ? signInEmail(user.name, url)
-          : welcomeEmail("there", url);
+          : welcomeEmail("there");
 
         await sendEmail({
           to: email,
@@ -88,7 +86,7 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account }: { user: User; account: any }) {
       if (account?.provider === "google") {
         try {
           await prisma.user.upsert({
@@ -102,7 +100,6 @@ export const authConfig: NextAuthConfig = {
               email: user.email!,
               name: user.name,
               image: user.image,
-              role: 'user',
               emailVerified: new Date(),
             },
           });
@@ -122,7 +119,6 @@ export const authConfig: NextAuthConfig = {
             update: {},
             create: {
               email: user.email,
-              role: 'user',
             },
           });
           return true;
@@ -135,7 +131,7 @@ export const authConfig: NextAuthConfig = {
       return false;
     },
 
-    async session({ session, token }) {
+    async session({ session, token }: { session: any; token: JWT }) {
       if (session?.user) {
         const user = await prisma.user.findUnique({
           where: { id: token.sub! },
@@ -143,9 +139,8 @@ export const authConfig: NextAuthConfig = {
             id: true,
             name: true,
             email: true,
-            role: true,
             emailVerified: true,
-            preferences: true,
+            image: true,
           }
         });
 
@@ -153,15 +148,14 @@ export const authConfig: NextAuthConfig = {
           session.user.id = user.id;
           session.user.name = user.name;
           session.user.email = user.email;
-          session.user.role = user.role;
-          session.user.preferences = user.preferences as any;
+          session.user.image = user.image;
           session.user.onboarded = user.emailVerified != null;
         }
       }
       return session;
     },
 
-    async redirect({ url, baseUrl }) {
+    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
       if (url.startsWith(baseUrl)) {
         const user = await prisma.user.findFirst({
           where: { 
