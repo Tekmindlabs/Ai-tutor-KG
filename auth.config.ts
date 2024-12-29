@@ -1,12 +1,13 @@
 import Google from "next-auth/providers/google";
 import Email from "next-auth/providers/email";
-import type { NextAuthConfig } from "next-auth";
+import type { NextAuthConfig } from "@auth/core";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/send";
 import { signInEmail, welcomeEmail } from "@/lib/email/templates";
 import crypto from 'crypto';
 import type { User as PrismaUser } from '@prisma/client';
 import type { JWT } from 'next-auth/jwt';
+import type { Account, Session } from "next-auth";
 
 declare module "next-auth" {
   interface Session {
@@ -85,7 +86,7 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account }: { user: User; account: Account | null }) {
       if (account?.provider === "google") {
         try {
           await prisma.user.upsert({
@@ -130,7 +131,7 @@ export const authConfig: NextAuthConfig = {
       return false;
     },
 
-    async session({ session, token }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       if (session?.user) {
         const user = await prisma.user.findUnique({
           where: { id: token.sub! },
@@ -154,27 +155,11 @@ export const authConfig: NextAuthConfig = {
       return session;
     },
 
-    async redirect({ url, baseUrl }) {
+    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
       if (url.startsWith(baseUrl)) {
-        const user = await prisma.user.findFirst({
-          where: { 
-            email: { not: null },
-            emailVerified: null 
-          },
-        });
-
-        if (user) {
-          return `${baseUrl}/onboarding`;
-        }
-        return `${baseUrl}/dashboard`;
+        return url;
       }
       return baseUrl;
     }
-  },
-
-  pages: {
-    signIn: "/auth/signin",
-    error: "/auth/error",
-    verifyRequest: "/auth/verify-request",
-  },
+  }
 };
