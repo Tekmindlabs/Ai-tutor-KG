@@ -1,8 +1,9 @@
-// /app/api/auth/[...nextauth]/route.ts
+
 import NextAuth from "next-auth"
 import EmailProvider from "next-auth/providers/email"
 import GoogleProvider from "next-auth/providers/google"
 import { Resend } from 'resend'
+import { handlers } from "@/lib/auth"
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -55,4 +56,4 @@ const handler = NextAuth({
     }
 });
 
-export { handler as GET, handler as POST }
+export const { GET, POST } = handlers

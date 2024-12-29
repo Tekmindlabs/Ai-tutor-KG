@@ -21,18 +21,11 @@ export type Session = {
 }
 
 export const config = {
-
   ...authConfig,
-
   adapter: PrismaAdapter(prisma),
-
   session: {
-
     strategy: "jwt"
-
   },
-
 };
-
 
 export const { handlers, auth, signIn, signOut } = NextAuth(config);
