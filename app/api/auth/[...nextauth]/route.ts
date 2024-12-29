@@ -1,8 +1,4 @@
-import NextAuth from "next-auth"
-import { authConfig } from "@/auth.config"
+import { handlers } from "@/auth"
 
-const handler = NextAuth(authConfig)
 
-// Change the export syntax to this:
-export const GET = handler
-export const POST = handler
+export const { GET, POST } = handlers
