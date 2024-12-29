@@ -8,7 +8,7 @@ import crypto from 'crypto';
 import type { User as PrismaUser } from '@prisma/client';
 import type { JWT } from 'next-auth/jwt';
 
-// Extend the built-in types
+// Type declarations remain the same
 declare module "next-auth" {
   interface Session {
     user: {
@@ -39,15 +39,6 @@ declare module "next-auth" {
 export const authConfig: NextAuthConfig = {
   providers: [
     Email({
-      server: {
-        host: process.env.EMAIL_SERVER_HOST!,
-        port: Number(process.env.EMAIL_SERVER_PORT),
-        auth: {
-          user: process.env.EMAIL_SERVER_USER!,
-          pass: process.env.EMAIL_SERVER_PASSWORD!,
-        },
-        secure: true,
-      },
       from: process.env.RESEND_FROM!,
       maxAge: 24 * 60 * 60,
       generateVerificationToken: async () => {
@@ -86,7 +77,8 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account }: { user: User; account: any }) {
+    // Callbacks remain the same
+    async signIn({ user, account }) {
       if (account?.provider === "google") {
         try {
           await prisma.user.upsert({
@@ -131,7 +123,7 @@ export const authConfig: NextAuthConfig = {
       return false;
     },
 
-    async session({ session, token }: { session: any; token: JWT }) {
+    async session({ session, token }) {
       if (session?.user) {
         const user = await prisma.user.findUnique({
           where: { id: token.sub! },
@@ -155,7 +147,7 @@ export const authConfig: NextAuthConfig = {
       return session;
     },
 
-    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
+    async redirect({ url, baseUrl }) {
       if (url.startsWith(baseUrl)) {
         const user = await prisma.user.findFirst({
           where: { 
