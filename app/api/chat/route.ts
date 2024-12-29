@@ -1,11 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-
 import { StreamingTextResponse } from "ai";
-
 import { NextRequest } from "next/server";
-
 import { withAuth } from "@/lib/auth/protected-api";
-
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
