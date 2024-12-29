@@ -1,22 +1,32 @@
-import type { NextAuthConfig } from "next-auth";
+import type { NextAuthConfig } from "next-auth"
 
 export const authConfig = {
   pages: {
-    signIn: "/login",
+    signIn: "/auth/signin",
   },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
-      
-      if (isOnDashboard) {
-        if (isLoggedIn) return true;
-        return false;
-      } else if (isLoggedIn) {
-        return Response.redirect(new URL("/dashboard", nextUrl));
+      const isLoggedIn = !!auth?.user
+      const isOnboardingPage = nextUrl.pathname.startsWith("/onboarding")
+      const isAuthPage = nextUrl.pathname.startsWith("/auth")
+      const isPublicPage = nextUrl.pathname === "/"
+
+      // Allow public pages
+      if (isPublicPage) return true
+
+      // Redirect unauthenticated users to login page
+      if (!isLoggedIn && !isAuthPage) {
+        return false
       }
-      return true;
+
+      // If the user is logged in and trying to access auth pages, 
+      // redirect them to the dashboard or home page
+      if (isLoggedIn && isAuthPage) {
+        return Response.redirect(new URL("/", nextUrl))
+      }
+
+      return true
     },
   },
-  providers: [],
-} satisfies NextAuthConfig;
+  providers: [], // Configure your auth providers here
+} satisfies NextAuthConfig
