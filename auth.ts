@@ -12,13 +12,17 @@ export type Session = {
   } & DefaultSession["user"]
 }
 
-export const { auth, handlers, signIn, signOut } = NextAuth({
+// Create and export the auth configuration
+const nextAuth = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   ...authConfig,
 })
 
-// Update these functions to use the new auth() method
+// Export the auth components
+export const { auth, handlers, signIn, signOut } = nextAuth
+
+// Export helper functions
 export async function getSession() {
   return await auth();
 }

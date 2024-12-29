@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
+// Middleware function
 export default auth((req) => {
   const isAuth = !!req.auth
   const isAuthPage = req.nextUrl.pathname.startsWith("/auth")
@@ -19,7 +20,6 @@ export default auth((req) => {
   return null
 })
 
-// Keep your existing config
 export const config = {
   matcher: [
     "/chat/:path*",
