@@ -1,7 +1,14 @@
-// /lib/email/templates/index.ts
+import * as React from 'react';
+
+
 export interface EmailTemplate {
+
   subject: string;
-  html: string;
+
+  html?: string;
+
+  component?: React.ReactElement;
+
 }
 
 export function welcomeEmail(name: string): EmailTemplate {

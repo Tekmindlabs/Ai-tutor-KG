@@ -38,7 +38,7 @@ declare module "next-auth" {
 
 
 export const authConfig: NextAuthConfig = {
-
+  debug: true,  // Add this line
   providers: [
 
     Email({

@@ -3,7 +3,7 @@ import { EmailTemplate } from './templates';
 
 export async function sendEmail({
   to,
-  from = 'EmotiTutor AI <no-reply@your-domain.com>',
+  from = process.env.RESEND_FROM || 'EmotiTutor AI <no-reply@your-domain.com>',
   template
 }: {
   to: string;
@@ -11,14 +11,20 @@ export async function sendEmail({
   template: EmailTemplate;
 }) {
   try {
-    const result = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from,
       to,
       subject: template.subject,
-      html: template.html
+      react: template.component, // If using React components
+      html: template.html // If using HTML strings
     });
 
-    return { success: true, messageId: result.id };
+    if (error) {
+      console.error('Failed to send email:', error);
+      throw error;
+    }
+
+    return { success: true, messageId: data.id };
   } catch (error) {
     console.error('Failed to send email:', error);
     throw error;
