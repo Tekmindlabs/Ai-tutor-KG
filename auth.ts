@@ -3,7 +3,6 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import { authConfig } from './auth.config'
 import { DefaultSession } from "next-auth"
-import { getServerSession } from "next-auth"
 
 // Define custom session type
 export type Session = {
@@ -19,12 +18,12 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   ...authConfig,
 })
 
-// Add the session utility functions here
+// Update these functions to use the new auth() method
 export async function getSession() {
-  return await getServerSession(authConfig);
+  return await auth();
 }
 
 export async function getCurrentUser() {
-  const session = await getSession();
+  const session = await auth();
   return session?.user;
 }
