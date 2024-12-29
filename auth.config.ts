@@ -8,7 +8,6 @@ import crypto from 'crypto';
 import type { User as PrismaUser } from '@prisma/client';
 import type { JWT } from 'next-auth/jwt';
 
-// Type declarations remain the same
 declare module "next-auth" {
   interface Session {
     user: {
@@ -36,69 +35,42 @@ declare module "next-auth" {
   }
 }
 
-
 export const authConfig: NextAuthConfig = {
-  debug: true,  // Add this line
+  debug: true,
   providers: [
-
     Email({
-
-      server: process.env.RESEND_API_KEY, // Add this line
-
-      from: process.env.RESEND_FROM!,
-
-      maxAge: 24 * 60 * 60,
-
-      generateVerificationToken: async () => {
-
-        return crypto.randomUUID();
-
+      server: {
+        api: process.env.RESEND_API_KEY,
+        from: process.env.RESEND_FROM!
       },
-
+      from: process.env.RESEND_FROM!,
+      maxAge: 24 * 60 * 60,
+      generateVerificationToken: async () => {
+        return crypto.randomUUID();
+      },
       async sendVerificationRequest({ identifier: email, url }) {
-
         const user = await prisma.user.findUnique({
-
           where: { email },
-
           select: { 
-
             name: true,
-
             emailVerified: true,
-
           }
-
         });
 
-
         const emailTemplate = user?.name 
-
           ? signInEmail(user.name, url)
-
           : welcomeEmail("there");
 
-
         try {
-
           await sendEmail({
-
             to: email,
-
             from: process.env.RESEND_FROM!,
-
             template: emailTemplate,
-
           });
-
         } catch (error) {
-
           throw new Error(`Error sending verification email: ${error}`);
-
         }
-
       },
-
     }),
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
@@ -113,7 +85,6 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    // Callbacks remain the same
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         try {
