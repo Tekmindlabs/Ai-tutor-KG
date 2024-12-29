@@ -1,160 +1,89 @@
 import Google from "next-auth/providers/google";
-
 import Email from "next-auth/providers/email";
-
 import type { NextAuthConfig } from "next-auth";
-
 import { prisma } from "@/lib/prisma";
-
 import { sendEmail } from "@/lib/email/send";
-
 import { signInEmail, welcomeEmail } from "@/lib/email/templates";
-
 import crypto from 'crypto';
-
 import type { User as PrismaUser } from '@prisma/client';
-
 import type { JWT } from 'next-auth/jwt';
 
-
 // Extend the built-in types
-
 declare module "next-auth" {
-
   interface Session {
-
     user: {
-
       id?: string;
-
       email?: string | null;
-
       name?: string | null;
-
       image?: string | null;
-
       onboarded: boolean;
-
       role?: string;
-
       preferences?: {
-
         language?: string;
-
         theme?: string;
-
       };
-
     }
-
   }
-
 
   interface User extends PrismaUser {
-
     id?: string;
-
     onboarded: boolean;
-
     role?: string;
-
     preferences?: {
-
       language?: string;
-
       theme?: string;
-
     };
-
   }
-
 }
 
-
 export const authConfig: NextAuthConfig = {
-
   providers: [
-
     Email({
-
+      server: {
+        host: process.env.EMAIL_SERVER_HOST!,
+        port: Number(process.env.EMAIL_SERVER_PORT),
+        auth: {
+          user: process.env.EMAIL_SERVER_USER!,
+          pass: process.env.EMAIL_SERVER_PASSWORD!,
+        },
+        secure: true,
+      },
       from: process.env.RESEND_FROM!,
-
-      maxAge: 24 * 60 * 60, // Magic links are valid for 24 hours
-
+      maxAge: 24 * 60 * 60,
       generateVerificationToken: async () => {
-
         return crypto.randomUUID();
-
       },
-
       sendVerificationRequest: async ({ identifier: email, url }) => {
+        const user = await prisma.user.findUnique({
+          where: { email },
+          select: { 
+            name: true,
+            emailVerified: true,
+          }
+        });
 
-        try {
+        const emailTemplate = user?.name 
+          ? signInEmail(user.name, url)
+          : welcomeEmail("there");
 
-          const user = await prisma.user.findUnique({
-
-            where: { email },
-
-            select: { 
-
-              name: true,
-
-              emailVerified: true,
-
-            }
-
-          });
-
-
-          const emailTemplate = user?.name 
-
-            ? signInEmail(user.name, url)
-
-            : welcomeEmail("there");
-
-
-          await sendEmail({
-
-            to: email,
-
-            from: process.env.RESEND_FROM!,
-
-            template: emailTemplate,
-
-          });
-
-        } catch (error) {
-
-          throw new Error("Failed to send verification email");
-
-        }
-
+        await sendEmail({
+          to: email,
+          from: process.env.RESEND_FROM!,
+          template: emailTemplate,
+        });
       },
-
     }),
-
     Google({
-
       clientId: process.env.AUTH_GOOGLE_ID!,
-
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
-
       authorization: {
-
         params: {
-
           prompt: "consent",
-
           access_type: "offline",
-
           response_type: "code"
-
         }
-
       }
-
     }),
-
   ],
   callbacks: {
     async signIn({ user, account }: { user: User; account: any }) {
