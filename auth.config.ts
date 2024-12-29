@@ -36,17 +36,54 @@ declare module "next-auth" {
   }
 }
 
+
 export const authConfig: NextAuthConfig = {
 
   debug: true,
 
   providers: [
 
-    Email({
+    {
 
-      // Remove the server configuration as it's specific to Nodemailer
+      id: "email",
+
+      type: "email",
 
       from: process.env.RESEND_FROM!,
+
+      server: {
+
+        // Custom send function using Resend
+
+        async send(options) {
+
+          const { to, subject, html } = options;
+
+          try {
+
+            await sendEmail({
+
+              to,
+
+              template: {
+
+                subject,
+
+                html
+
+              },
+
+            });
+
+          } catch (error) {
+
+            throw new Error(`Error sending verification email: ${error}`);
+
+          }
+
+        }
+
+      },
 
       maxAge: 24 * 60 * 60,
 
@@ -55,8 +92,6 @@ export const authConfig: NextAuthConfig = {
         return crypto.randomUUID();
 
       },
-
-      // Custom sendVerificationRequest using Resend
 
       async sendVerificationRequest({ identifier: email, url }) {
 
@@ -100,7 +135,7 @@ export const authConfig: NextAuthConfig = {
 
       },
 
-    }),
+    },
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
