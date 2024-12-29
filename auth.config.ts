@@ -1,6 +1,6 @@
-// auth.config.ts
 import Google from "next-auth/providers/google"
 import type { NextAuthConfig } from "next-auth"
+import { prisma } from "@/lib/prisma"
 
 export default {
   providers: [

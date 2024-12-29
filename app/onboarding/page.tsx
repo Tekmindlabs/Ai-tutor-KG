@@ -1,18 +1,46 @@
 "use client";
 
+
 import { useState } from "react";
+
 import { useRouter } from "next/navigation";
 
+import { useSession } from "next-auth/react";
+
+
 export default function Onboarding() {
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    name: "",
-    phoneNumber: "",
-    age: 0,
-    interests: [] as string[],
-    gdprConsent: false,
-    email: "",
+
+  const { data: session } = useSession({
+
+    required: true,
+
+    onUnauthenticated() {
+
+      router.push("/auth/signin");
+
+    },
+
   });
+
+
+  const [step, setStep] = useState(1);
+
+  const [formData, setFormData] = useState({
+
+    name: session?.user?.name || "",
+
+    phoneNumber: "",
+
+    age: 0,
+
+    interests: [] as string[],
+
+    gdprConsent: false,
+
+    email: session?.user?.email || "",
+
+  });
+
   const router = useRouter();
 
   const questions = [

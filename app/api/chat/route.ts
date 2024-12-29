@@ -1,23 +1,24 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { StreamingTextResponse, LangChainStream } from "ai";
-import { AgentGraph } from "@langchain/langgraph";
+
+import { StreamingTextResponse } from "ai";
+
 import { NextRequest } from "next/server";
-import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+
+import { withAuth } from "@/lib/auth/protected-api";
+
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
-export async function POST(req: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return new Response("Unauthorized", { status: 401 });
-    }
 
-    const formData = await req.formData();
-    const message = formData.get("message") as string;
-    const images = formData.getAll("images") as File[];
-    const model = formData.get("model") as string || "gemini-pro";
+export const POST = withAuth(async (req: NextRequest, session) => {
+
+  const formData = await req.formData();
+
+  const message = formData.get("message") as string;
+
+  const images = formData.getAll("images") as File[];
+
+  const model = formData.get("model") as string || "gemini-pro";
 
     const { stream, handlers } = LangChainStream();
 

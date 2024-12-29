@@ -1,11 +1,19 @@
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import NextAuth from "next-auth"
+import { PrismaAdapter } from "@auth/prisma-adapter"
+import { prisma } from "@/lib/prisma"
+import authConfig from "./auth.config"
+import { DefaultSession } from "next-auth"
 
-export async function getSession() {
-  return await getServerSession(authOptions);
+// Define custom session type
+export type Session = {
+  user: {
+    id: string;
+    onboarded: boolean;
+  } & DefaultSession["user"]
 }
 
-export async function getCurrentUser() {
-  const session = await getSession();
-  return session?.user;
-}
+export const { auth, handlers, signIn, signOut } = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  session: { strategy: "jwt" },
+  ...authConfig,
+})

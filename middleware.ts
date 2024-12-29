@@ -1,23 +1,38 @@
-import authConfig from "./auth.config"
-import NextAuth from "next-auth"
+import { auth } from "@/auth"
+import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 
-const { auth } = NextAuth(authConfig)
 
-export default auth(async function middleware(req) {
-  const session = await auth();
-  const isOnboarded = session?.user?.onboarded;
-  const path = req.nextUrl.pathname;
+export default auth((req: NextRequest) => {
 
-  if (path === "/onboarding" && isOnboarded) {
-    return Response.redirect(new URL("/chat", req.url));
+  const isAuth = !!req.auth
+
+  const isAuthPage = req.nextUrl.pathname.startsWith("/auth")
+
+
+  if (isAuthPage) {
+
+    if (isAuth) {
+
+      return NextResponse.redirect(new URL("/chat", req.url))
+
+    }
+
+    return null
+
   }
 
-  if (!isOnboarded && path !== "/onboarding") {
-    return Response.redirect(new URL("/onboarding", req.url));
+
+  if (!isAuth) {
+
+    return NextResponse.redirect(new URL("/auth/signin", req.url))
+
   }
 
-  return null;
+  return null
+
 })
+
 
 export const config = {
   matcher: [

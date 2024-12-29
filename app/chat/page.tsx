@@ -1,7 +1,10 @@
 "use client";
 
+
 import { useChat } from "ai/react";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ModelSelector } from "@/components/chat/model-selector";
@@ -9,22 +12,43 @@ import { ChatMessage } from "@/components/chat/chat-message";
 import { InputControls } from "@/components/chat/input-controls";
 
 export default function ChatPage() {
-  const [model, setModel] = useState("gemini-pro");
-  const { messages, handleSubmit, isLoading } = useChat({
-    api: "/api/chat",
-    body: { model },
+
+  const { data: session } = useSession({
+
+    required: true,
+
+    onUnauthenticated() {
+
+      redirect("/auth/signin");
+
+    },
+
   });
 
-  const onSubmit = async (text: string, images?: File[]) => {
-    const formData = new FormData();
-    formData.append("message", text);
-    if (images) {
-      images.forEach(image => formData.append("images", image));
-    }
-    formData.append("model", model);
 
-    handleSubmit(formData);
+  const [model, setModel] = useState("gemini-pro");
+
+  const { messages, handleSubmit, isLoading } = useChat({
+
+    api: "/api/chat",
+
+    body: { model },
+
+  });
+
+
+  const onSubmit = async (text: string, images?: File[]) => {
+
+    const formData = new FormData();
+
+    formData.append("message", text);
+
+    // ... rest of your code
+
   };
+
+
+  return (
 
   return (
     <div className="container mx-auto max-w-4xl py-8">
