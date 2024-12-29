@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
-import { handlers } from "@/lib/auth"
+import { authConfig } from "@/auth.config"
 
-// All configuration is now handled in auth.config.ts
-export const { GET, POST } = handlers
+const handler = NextAuth(authConfig)
+
+export { handler as GET, handler as POST }
