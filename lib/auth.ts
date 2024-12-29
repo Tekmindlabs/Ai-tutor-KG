@@ -1,10 +1,18 @@
 import NextAuth from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
-import authConfig from "./auth.config"
-import { DefaultSession } from "next-auth"
+import { authConfig } from "@/auth.config"
+import { DefaultSession, NextAuthConfig } from "next-auth"
 
-// Define custom session type
+declare module "next-auth" {
+  interface Session extends DefaultSession {
+    user: {
+      id: string;
+      onboarded: boolean;
+    } & DefaultSession["user"]
+  }
+}
+
 export type Session = {
   user: {
     id: string;
@@ -12,8 +20,10 @@ export type Session = {
   } & DefaultSession["user"]
 }
 
-export const { auth, handlers, signIn, signOut } = NextAuth({
+const config = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   ...authConfig,
-})
+} satisfies NextAuthConfig
+
+export const { auth, handlers, signIn, signOut } = NextAuth(config)

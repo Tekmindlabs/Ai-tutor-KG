@@ -2,19 +2,18 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { StreamingTextResponse } from "ai";
 import { NextRequest } from "next/server";
 import { withAuth } from "@/lib/auth/protected-api";
+import { LangChainStream } from "ai/streams";
+import { prisma } from "@/lib/prisma";
+import { AgentGraph } from "@/lib/ai/agents";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
-
 export const POST = withAuth(async (req: NextRequest, session) => {
-
-  const formData = await req.formData();
-
-  const message = formData.get("message") as string;
-
-  const images = formData.getAll("images") as File[];
-
-  const model = formData.get("model") as string || "gemini-pro";
+  try {
+    const formData = await req.formData();
+    const message = formData.get("message") as string;
+    const images = formData.getAll("images") as File[];
+    const model = formData.get("model") as string || "gemini-pro";
 
     const { stream, handlers } = LangChainStream();
 
@@ -63,7 +62,7 @@ export const POST = withAuth(async (req: NextRequest, session) => {
       .addEdge("process_input", "generate_speech");
 
     // Execute workflow
-    workflow.execute({
+    await workflow.execute({
       message,
       chatId: session.user.id,
     });
@@ -73,4 +72,4 @@ export const POST = withAuth(async (req: NextRequest, session) => {
     console.error("Chat error:", error);
     return new Response("Internal error", { status: 500 });
   }
-}
+});
