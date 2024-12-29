@@ -1,4 +1,6 @@
 import { headers } from 'next/headers'
+import { auth } from '@/auth'  // Add this import statement
+import { redirect } from 'next/navigation'
 
 export default async function RootLayout({
   children,
