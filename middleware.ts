@@ -1,30 +1,23 @@
-import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
+import authConfig from "./auth.config"
+import NextAuth from "next-auth"
 
-export default withAuth(
-  function middleware(req) {
-    const session = req.nextauth.token;
-    const isOnboarded = session?.onboarded;
-    const path = req.nextUrl.pathname;
+const { auth } = NextAuth(authConfig)
 
-    // Allow access to onboarding page only if not onboarded
-    if (path === "/onboarding" && isOnboarded) {
-      return NextResponse.redirect(new URL("/chat", req.url));
-    }
+export default auth(async function middleware(req) {
+  const session = await auth();
+  const isOnboarded = session?.user?.onboarded;
+  const path = req.nextUrl.pathname;
 
-    // Redirect to onboarding if not onboarded (except for onboarding page)
-    if (!isOnboarded && path !== "/onboarding") {
-      return NextResponse.redirect(new URL("/onboarding", req.url));
-    }
-
-    return NextResponse.next();
-  },
-  {
-    callbacks: {
-      authorized: ({ token }) => !!token,
-    },
+  if (path === "/onboarding" && isOnboarded) {
+    return Response.redirect(new URL("/chat", req.url));
   }
-);
+
+  if (!isOnboarded && path !== "/onboarding") {
+    return Response.redirect(new URL("/onboarding", req.url));
+  }
+
+  return null;
+})
 
 export const config = {
   matcher: [
@@ -35,4 +28,4 @@ export const config = {
     "/api/knowledge/:path*",
     "/api/onboarding",
   ],
-};
+}

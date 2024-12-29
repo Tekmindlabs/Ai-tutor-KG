@@ -1,32 +1,41 @@
+// auth.config.ts
+import Google from "next-auth/providers/google"
 import type { NextAuthConfig } from "next-auth"
 
-export const authConfig = {
+export default {
+  providers: [
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+    }),
+  ],
+  callbacks: {
+    async session({ session, user }) {
+      if (session?.user) {
+        session.user.id = user.id;
+        
+        // Check if user is onboarded
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { onboarded: true }
+        });
+        session.user.onboarded = dbUser?.onboarded || false;
+      }
+      return session;
+    },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith(baseUrl)) {
+        const session = await auth();
+        if (session?.user && !session.user.onboarded) {
+          return `${baseUrl}/onboarding`;
+        }
+        return `${baseUrl}/chat`;
+      }
+      return baseUrl;
+    }
+  },
   pages: {
     signIn: "/auth/signin",
+    error: "/auth/error",
   },
-  callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user
-      const isOnboardingPage = nextUrl.pathname.startsWith("/onboarding")
-      const isAuthPage = nextUrl.pathname.startsWith("/auth")
-      const isPublicPage = nextUrl.pathname === "/"
-
-      // Allow public pages
-      if (isPublicPage) return true
-
-      // Redirect unauthenticated users to login page
-      if (!isLoggedIn && !isAuthPage) {
-        return false
-      }
-
-      // If the user is logged in and trying to access auth pages, 
-      // redirect them to the dashboard or home page
-      if (isLoggedIn && isAuthPage) {
-        return Response.redirect(new URL("/", nextUrl))
-      }
-
-      return true
-    },
-  },
-  providers: [], // Configure your auth providers here
 } satisfies NextAuthConfig
