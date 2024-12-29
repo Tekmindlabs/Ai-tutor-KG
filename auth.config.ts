@@ -2,33 +2,37 @@
 import Google from "next-auth/providers/google";
 import Email from "next-auth/providers/email";
 import { NextAuthConfig } from "next-auth";
-import { Session, User } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/send";
 import { signInEmail, welcomeEmail } from "@/lib/email/templates";
 import crypto from 'crypto';
 
-// Custom type definitions
-interface CustomSession extends Session {
-  user?: {
+// Extend the built-in types
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      email?: string | null;
+      name?: string | null;
+      image?: string | null;
+      onboarded: boolean;
+      role?: string;
+      preferences?: {
+        language?: string;
+        theme?: string;
+      };
+    }
+  }
+
+  interface User {
     id: string;
     onboarded: boolean;
-    email?: string | null;
-    name?: string | null;
-    image?: string | null;
     role?: string;
     preferences?: {
       language?: string;
       theme?: string;
     };
   }
-}
-
-interface CustomUser extends User {
-  id: string;
-  onboarded?: boolean;
-  name?: string | null;
-  role?: string;
 }
 
 export const authConfig: NextAuthConfig = {
@@ -44,38 +48,31 @@ export const authConfig: NextAuthConfig = {
         secure: true,
       },
       from: process.env.RESEND_FROM,
-      maxAge: 24 * 60 * 60, // Magic links are valid for 24 hours
+      maxAge: 24 * 60 * 60,
       async generateVerificationToken() {
         return crypto.randomUUID();
       },
       async sendVerificationRequest({
         identifier: email,
         url,
-        provider: { server, from },
       }) {
         const user = await prisma.user.findUnique({
           where: { email },
           select: { 
-            name: true, 
-            onboarded: true,
-            preferences: true 
+            name: true,
+            emailVerified: true,
           }
         });
 
-        const template = user?.name 
+        const emailTemplate = user?.name 
           ? signInEmail(user.name, url)
           : welcomeEmail("there", url);
 
-        try {
-          await sendEmail({
-            to: email,
-            template: template,
-            subject: user?.name ? "Sign in to AI Tutor" : "Welcome to AI Tutor"
-          });
-        } catch (error) {
-          console.error('Error sending verification email:', error);
-          throw new Error('Failed to send verification email');
-        }
+        await sendEmail({
+          to: email,
+          from: process.env.RESEND_FROM!,
+          template: emailTemplate,
+        });
       },
     }),
     Google({
@@ -91,23 +88,22 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       if (account?.provider === "google") {
         try {
-          // Update or create user profile with Google data
           await prisma.user.upsert({
             where: { email: user.email! },
             update: {
               name: user.name,
               image: user.image,
-              lastLogin: new Date(),
+              emailVerified: new Date(),
             },
             create: {
               email: user.email!,
               name: user.name,
               image: user.image,
-              onboarded: false,
               role: 'user',
+              emailVerified: new Date(),
             },
           });
           return true;
@@ -121,19 +117,14 @@ export const authConfig: NextAuthConfig = {
         if (!user.email) return false;
         
         try {
-          const existingUser = await prisma.user.findUnique({
+          await prisma.user.upsert({
             where: { email: user.email },
+            update: {},
+            create: {
+              email: user.email,
+              role: 'user',
+            },
           });
-
-          if (!existingUser) {
-            await prisma.user.create({
-              data: {
-                email: user.email,
-                onboarded: false,
-                role: 'user',
-              },
-            });
-          }
           return true;
         } catch (error) {
           console.error('Error during email sign in:', error);
@@ -144,47 +135,43 @@ export const authConfig: NextAuthConfig = {
       return false;
     },
 
-    async session({ session, user }: { session: CustomSession; user: CustomUser }): Promise<CustomSession> {
+    async session({ session, token }) {
       if (session?.user) {
-        session.user.id = user.id;
-        
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
+        const user = await prisma.user.findUnique({
+          where: { id: token.sub! },
           select: {
             id: true,
-            onboarded: true,
             name: true,
             email: true,
             role: true,
+            emailVerified: true,
             preferences: true,
           }
         });
-        
-        if (dbUser) {
-          session.user.onboarded = dbUser.onboarded ?? false;
-          session.user.name = dbUser.name;
-          session.user.email = dbUser.email;
-          session.user.role = dbUser.role;
-          session.user.preferences = dbUser.preferences;
+
+        if (user) {
+          session.user.id = user.id;
+          session.user.name = user.name;
+          session.user.email = user.email;
+          session.user.role = user.role;
+          session.user.preferences = user.preferences as any;
+          session.user.onboarded = user.emailVerified != null;
         }
       }
       return session;
     },
 
-    async redirect({ url, baseUrl }): Promise<string> {
+    async redirect({ url, baseUrl }) {
       if (url.startsWith(baseUrl)) {
-        if (url.includes('/onboarding')) return url;
-        
-        const token = url.split('token=')[1];
-        if (token) {
-          const session = await prisma.session.findFirst({
-            where: { accessToken: token },
-            include: { user: true }
-          });
+        const user = await prisma.user.findFirst({
+          where: { 
+            email: { not: null },
+            emailVerified: null 
+          },
+        });
 
-          if (session?.user && !session.user.onboarded) {
-            return `${baseUrl}/onboarding`;
-          }
+        if (user) {
+          return `${baseUrl}/onboarding`;
         }
         return `${baseUrl}/dashboard`;
       }
@@ -197,41 +184,4 @@ export const authConfig: NextAuthConfig = {
     error: "/auth/error",
     verifyRequest: "/auth/verify-request",
   },
-
-  events: {
-    async createUser({ user }) {
-      if (user.email) {
-        try {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              onboarded: false,
-              role: 'user',
-              preferences: {
-                language: 'en',
-                theme: 'light'
-              }
-            },
-          });
-        } catch (error) {
-          console.error('Error updating new user:', error);
-        }
-      }
-    },
-
-    async signIn({ user }) {
-      try {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { lastLogin: new Date() },
-        });
-      } catch (error) {
-        console.error('Error updating last login:', error);
-      }
-    },
-  },
-
-  debug: process.env.NODE_ENV === 'development',
-} satisfies NextAuthConfig;
-
-export default authConfig;
+};

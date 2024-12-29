@@ -13,7 +13,10 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  password      String?
+  role          String    @default("user")
   onboarded     Boolean   @default(false)
+  lastLogin     DateTime?
   phoneNumber   String?
   age           Int?
   interests     String[]
