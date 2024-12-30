@@ -1,6 +1,6 @@
 import Google from "next-auth/providers/google";
 import Email from "next-auth/providers/email";
-import type { NextAuthConfig } from "@auth/core";
+import type { AuthConfig } from "@auth/core";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/send";
 import { signInEmail, welcomeEmail } from "@/lib/email/templates";
