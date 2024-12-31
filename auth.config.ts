@@ -1,13 +1,13 @@
 import Google from "next-auth/providers/google";
 import Email from "next-auth/providers/email";
-import type { AuthConfig } from "@auth/core";
+import type { NextAuthConfig } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/send";
 import { signInEmail, welcomeEmail } from "@/lib/email/templates";
 import crypto from 'crypto';
 import type { User as PrismaUser } from '@prisma/client';
 import type { JWT } from 'next-auth/jwt';
-import type { Account, Session } from "next-auth";
+import type { Account, Session, User } from "next-auth";
 
 declare module "next-auth" {
   interface Session {
@@ -36,105 +36,61 @@ declare module "next-auth" {
   }
 }
 
-
 export const authConfig: NextAuthConfig = {
-
   debug: true,
-
   providers: [
-
     {
-
       id: "email",
-
       type: "email",
-
       from: process.env.RESEND_FROM!,
-
       server: {
-
-        // Custom send function using Resend
-
-        async send(options) {
-
+        async send(options: { to: string; subject: string; html: string }) {
           const { to, subject, html } = options;
-
           try {
-
             await sendEmail({
-
               to,
-
               template: {
-
                 subject,
-
                 html
-
               },
-
             });
-
           } catch (error) {
-
             throw new Error(`Error sending verification email: ${error}`);
-
           }
-
         }
-
       },
-
       maxAge: 24 * 60 * 60,
-
       generateVerificationToken: async () => {
-
         return crypto.randomUUID();
-
       },
-
-      async sendVerificationRequest({ identifier: email, url }) {
-
+      async sendVerificationRequest({ 
+        identifier: email, 
+        url 
+      }: { 
+        identifier: string; 
+        url: string 
+      }) {
         const user = await prisma.user.findUnique({
-
           where: { email },
-
           select: { 
-
             name: true,
-
             emailVerified: true,
-
           }
-
         });
 
-
         const emailTemplate = user?.name 
-
           ? signInEmail(user.name, url)
-
           : welcomeEmail("there");
 
-
         try {
-
           await sendEmail({
-
             to: email,
-
             template: emailTemplate,
-
           });
-
         } catch (error) {
-
           throw new Error(`Error sending verification email: ${error}`);
-
         }
-
       },
-
     },
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
@@ -149,7 +105,13 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account }: { user: User; account: Account | null }) {
+    async signIn({ 
+      user, 
+      account 
+    }: { 
+      user: User; 
+      account: Account | null 
+    }) {
       if (account?.provider === "google") {
         try {
           await prisma.user.upsert({
@@ -194,7 +156,13 @@ export const authConfig: NextAuthConfig = {
       return false;
     },
 
-    async session({ session, token }: { session: Session; token: JWT }) {
+    async session({ 
+      session, 
+      token 
+    }: { 
+      session: Session; 
+      token: JWT 
+    }) {
       if (session?.user) {
         const user = await prisma.user.findUnique({
           where: { id: token.sub! },
@@ -218,7 +186,13 @@ export const authConfig: NextAuthConfig = {
       return session;
     },
 
-    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
+    async redirect({ 
+      url, 
+      baseUrl 
+    }: { 
+      url: string; 
+      baseUrl: string 
+    }) {
       if (url.startsWith(baseUrl)) {
         return url;
       }
