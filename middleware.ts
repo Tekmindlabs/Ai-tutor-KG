@@ -1,44 +1,32 @@
-// /middleware.ts
-import { auth } from "@/auth"
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+// middleware.ts
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
-export default auth((req) => {
-  try {
-    const isAuth = !!req.auth
-    const isAuthPage = req.nextUrl.pathname.startsWith("/auth")
+export async function middleware(request: NextRequest) {
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  })
 
-    // Add debugging
-    console.log('Auth status:', isAuth);
-    console.log('Current path:', req.nextUrl.pathname);
-
-    if (isAuthPage) {
-      if (isAuth) {
-        return NextResponse.redirect(new URL("/dashboard", req.url))
-      }
-      return null
-    }
-
-    if (!isAuth) {
-      let from = req.nextUrl.pathname;
-      if (from !== "/") {
-        return NextResponse.redirect(
-          new URL(`/auth/signin?from=${from}`, req.url)
-        );
-      }
-      return NextResponse.redirect(new URL("/auth/signin", req.url));
-    }
-    return null
-  } catch (error) {
-    console.error('Middleware error:', error);
-    // Allow the request to continue in case of error
-    return null;
+  // Protect routes that require authentication
+  if (!token && request.nextUrl.pathname.startsWith('/protected')) {
+    return NextResponse.redirect(new URL('/api/auth/signin', request.url))
   }
-})
 
-// Update matcher to exclude more paths
+  return NextResponse.next()
+}
+
+// Configure which routes to run middleware on
 export const config = {
   matcher: [
-    "/((?!auth|_next/static|_next/image|favicon.ico|api/auth).*)",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/auth (auth routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api/auth|_next/static|_next/image|favicon.ico).*)',
   ],
 }

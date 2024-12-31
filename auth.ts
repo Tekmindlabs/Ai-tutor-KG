@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma"
 import { authConfig } from './auth.config'
 import { DefaultSession } from "next-auth"
 
-// Define custom session type
 export type Session = {
   user: {
     id: string;
@@ -12,17 +11,28 @@ export type Session = {
   } & DefaultSession["user"]
 }
 
-// Create and export the auth configuration
 const nextAuth = NextAuth({
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+  session: { 
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: `__Secure-next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+  },
   ...authConfig,
 })
 
-// Export the auth components
 export const { auth, handlers, signIn, signOut } = nextAuth
 
-// Export helper functions
 export async function getSession() {
   return await auth();
 }

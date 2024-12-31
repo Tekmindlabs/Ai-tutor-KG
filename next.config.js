@@ -15,6 +15,10 @@ const nextConfig = {
     }
     return config;
   },
+  // Add this configuration
+  experimental: {
+    middleware: true,
+  },
 };
 
 module.exports = nextConfig;
