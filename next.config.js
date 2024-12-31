@@ -13,10 +13,16 @@ const nextConfig = {
         buffer: require.resolve('buffer/'),
       };
     }
+    // Add this to handle OIDC token hash
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'oidc-token-hash': require.resolve('oidc-token-hash'),
+    };
     return config;
   },
   experimental: {
-    middleware: true,
+    // Remove middleware flag as it's no longer experimental in Next 14
+    // middleware: true,
   }
 };
 
