@@ -6,6 +6,7 @@ const nextConfig = {
   images: { unoptimized: true },
   webpack: (config, { isServer }) => {
     if (!isServer) {
+      // Add fallbacks for client-side
       config.resolve.fallback = {
         ...config.resolve.fallback,
         crypto: require.resolve('crypto-browserify'),
@@ -13,16 +14,14 @@ const nextConfig = {
         buffer: require.resolve('buffer/'),
       };
     }
-    // Add this to handle OIDC token hash
+
+    // Add alias for oidc-token-hash
     config.resolve.alias = {
       ...config.resolve.alias,
       'oidc-token-hash': require.resolve('oidc-token-hash'),
     };
+
     return config;
-  },
-  experimental: {
-    // Remove middleware flag as it's no longer experimental in Next 14
-    // middleware: true,
   }
 };
 
