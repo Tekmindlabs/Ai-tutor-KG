@@ -1,6 +1,6 @@
+import type { NextAuthConfig } from "@auth/core";
 import Google from "next-auth/providers/google";
 import Email from "next-auth/providers/email";
-import type { NextAuthConfig } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/send";
 import { signInEmail, welcomeEmail } from "@/lib/email/templates";
@@ -29,10 +29,6 @@ declare module "next-auth" {
     id?: string;
     onboarded: boolean;
     role?: string;
-    preferences?: {
-      language?: string;
-      theme?: string;
-    };
   }
 }
 
@@ -55,13 +51,14 @@ export const authConfig: NextAuthConfig = {
               },
             });
           } catch (error) {
+            console.error('Email send error:', error);
             throw new Error(`Error sending verification email: ${error}`);
           }
         }
       },
       maxAge: 24 * 60 * 60,
       generateVerificationToken: async () => {
-        return crypto.randomUUID();
+        return crypto.randomBytes(32).toString('hex');
       },
       async sendVerificationRequest({ 
         identifier: email, 
@@ -88,6 +85,7 @@ export const authConfig: NextAuthConfig = {
             template: emailTemplate,
           });
         } catch (error) {
+          console.error('Verification email error:', error);
           throw new Error(`Error sending verification email: ${error}`);
         }
       },
@@ -105,6 +103,28 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
+    async jwt({ 
+      token, 
+      user, 
+      account 
+    }: { 
+      token: JWT; 
+      user: User | null; 
+      account: Account | null 
+    }) {
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
+        token.picture = user.image;
+      }
+      if (account) {
+        token.accessToken = account.access_token;
+        token.provider = account.provider;
+      }
+      return token;
+    },
+    
     async signIn({ 
       user, 
       account 
@@ -126,29 +146,12 @@ export const authConfig: NextAuthConfig = {
               name: user.name,
               image: user.image,
               emailVerified: new Date(),
+              role: 'USER',
             },
           });
           return true;
         } catch (error) {
           console.error('Error during Google sign in:', error);
-          return false;
-        }
-      }
-
-      if (account?.provider === "email") {
-        if (!user.email) return false;
-        
-        try {
-          await prisma.user.upsert({
-            where: { email: user.email },
-            update: {},
-            create: {
-              email: user.email,
-            },
-          });
-          return true;
-        } catch (error) {
-          console.error('Error during email sign in:', error);
           return false;
         }
       }
@@ -164,23 +167,32 @@ export const authConfig: NextAuthConfig = {
       token: JWT 
     }) {
       if (session?.user) {
-        const user = await prisma.user.findUnique({
-          where: { id: token.sub! },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            emailVerified: true,
-            image: true,
-          }
-        });
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: token.sub! },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              emailVerified: true,
+              image: true,
+              role: true,
+            }
+          });
 
-        if (user) {
-          session.user.id = user.id;
-          session.user.name = user.name;
-          session.user.email = user.email;
-          session.user.image = user.image;
-          session.user.onboarded = user.emailVerified != null;
+          if (user) {
+            session.user = {
+              ...session.user,
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              image: user.image,
+              onboarded: user.emailVerified != null,
+              role: user.role,
+            };
+          }
+        } catch (error) {
+          console.error('Session user fetch error:', error);
         }
       }
       return session;
@@ -193,10 +205,13 @@ export const authConfig: NextAuthConfig = {
       url: string; 
       baseUrl: string 
     }) {
-      if (url.startsWith(baseUrl)) {
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`;
+      }
+      else if (url.startsWith(baseUrl)) {
         return url;
       }
       return baseUrl;
     }
-  }
+  },
 };
