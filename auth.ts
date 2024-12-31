@@ -1,32 +1,35 @@
+// auth.ts
 import NextAuth from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import { authConfig } from "./auth.config"
-import { DefaultSession } from "next-auth"
+
+export const {
+  handlers: { GET, POST },
+  auth,
+  signIn,
+  signOut,
+} = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  session: { 
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  callbacks: {
+    async session({ session, user }) {
+      if (session?.user) {
+        session.user.id = user.id;
+        session.user.onboarded = user.onboarded;
+      }
+      return session;
+    },
+  },
+  ...authConfig,
+})
 
 export type Session = {
   user: {
     id: string;
     onboarded: boolean;
   } & DefaultSession["user"]
-}
-
-const nextAuth = NextAuth({
-  adapter: PrismaAdapter(prisma),
-  session: { 
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  ...authConfig,
-})
-
-export const { auth, handlers, signIn, signOut } = nextAuth
-
-export async function getSession() {
-  return await auth()
-}
-
-export async function getCurrentUser() {
-  const session = await auth()
-  return session?.user
 }

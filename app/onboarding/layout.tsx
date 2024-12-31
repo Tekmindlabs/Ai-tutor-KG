@@ -1,5 +1,6 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
+// app/onboarding/layout.tsx
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
 
 export default async function OnboardingLayout({
   children,
@@ -7,9 +8,13 @@ export default async function OnboardingLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  
-  if (!session) {
+
+  if (!session?.user) {
     redirect("/api/auth/signin");
+  }
+
+  if (session.user.onboarded) {
+    redirect("/chat");
   }
 
   return (

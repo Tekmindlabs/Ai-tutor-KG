@@ -1,16 +1,17 @@
-import { NextRequest } from "next/server";
-import { auth } from "@/auth";
+// lib/auth/protected-api.ts
+import { auth } from "@/auth"
+import { NextRequest } from "next/server"
 
-export async function withAuth(
+export function withAuth(
   handler: (req: NextRequest, session: any) => Promise<Response>
 ) {
-  return async function (req: NextRequest) {
-    const session = await auth();
-    
+  return async (req: NextRequest) => {
+    const session = await auth()
+
     if (!session?.user?.id) {
-      return new Response("Unauthorized", { status: 401 });
+      return new Response("Unauthorized", { status: 401 })
     }
 
-    return handler(req, session);
-  };
+    return handler(req, session)
+  }
 }
