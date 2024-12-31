@@ -91,12 +91,12 @@ export const authConfig: NextAuthConfig = {
       },
     },
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      // Make sure authorization includes proper scope and response type
       authorization: {
         params: {
-          prompt: "consent",
-          access_type: "offline",
+          scope: "openid email profile",
           response_type: "code"
         }
       }
