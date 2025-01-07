@@ -1,10 +1,24 @@
+// types.ts
 export interface Document {
   id: string;
   title: string;
   content: string;
+  userId: string;
+  vectorId: string | null;
   fileType: string;
-  metadata: Record<string, any>;
   version: number;
+  metadata?: {
+    previousVersions?: Array<{
+      version: number;
+      updatedAt: Date;
+    }>;
+    size?: number;
+    lastModified?: number;
+    fileType?: string;
+    embeddingDimension?: number;
+    processingTimestamp?: string;
+    [key: string]: any;
+  } | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -14,6 +28,7 @@ export interface URL {
   url: string;
   title: string;
   content: string;
+  userId: string;
   lastAccessed: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -24,6 +39,7 @@ export interface Note {
   title: string;
   content: string;
   format: string;
+  tags: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,4 +70,12 @@ export interface SharedContent {
   };
   createdAt: Date;
   updatedAt: Date;
+}
+export interface VectorResult {
+  id: string;
+  user_id: string;
+  content_type: string;
+  content_id: string;
+  metadata: string;
+  score?: number;
 }
