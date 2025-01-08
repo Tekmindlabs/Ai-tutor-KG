@@ -1,13 +1,13 @@
-import { Sidebar } from "@/components/layout/sidebar";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth/session"; // Change this import
 import { redirect } from "next/navigation";
+import { Navbar } from "@/components/layout/navbar";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  const session = await getSession(); // Use getSession instead of auth
   
   if (!session) {
     redirect("/api/auth/signin");
@@ -15,11 +15,9 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar />
-      <main className="md:pl-64">
-        <div className="container mx-auto px-4 py-8">
-          {children}
-        </div>
+      <Navbar />
+      <main className="container mx-auto px-4 py-8">
+        {children}
       </main>
     </div>
   );

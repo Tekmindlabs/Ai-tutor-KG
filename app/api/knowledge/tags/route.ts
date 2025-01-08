@@ -14,8 +14,7 @@ export async function POST(req: NextRequest) {
       return new Response("Tag name is required", { status: 400 });
     }
 
-    // Note: Use prisma.tag instead of prisma.tags
-    const tag = await prisma.tag.create({
+    const tag = await prisma.tags.create({
       data: {
         userId: session.user.id,
         name,

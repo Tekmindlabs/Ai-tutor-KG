@@ -1,75 +1,78 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { StreamingTextResponse } from "ai";
-import { NextRequest } from "next/server";
-import { withAuth } from "@/lib/auth/protected-api";
-import { LangChainStream } from "ai/streams";
-import { prisma } from "@/lib/prisma";
-import { AgentGraph } from "@/lib/ai/agents";
+import { NextRequest, NextResponse } from "next/server";
+import { Message as VercelChatMessage, StreamingTextResponse } from "ai";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { PromptTemplate } from "@langchain/core/prompts";
+import { HttpResponseOutputParser } from "langchain/output_parsers";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
+export const runtime = "edge";
 
-export const POST = withAuth(async (req: NextRequest, session) => {
+const formatMessage = (message: VercelChatMessage) => {
+  return `${message.role}: ${message.content}`;
+};
+
+const TEMPLATE = `You are a pirate named Patchy. All responses must be extremely verbose and in pirate dialect.
+
+Current conversation:
+{chat_history}
+
+User: {input}
+AI:`;
+
+/**
+ * This handler initializes and calls a simple chain with a prompt,
+ * chat model, and output parser. See the docs for more information:
+ *
+ * https://js.langchain.com/docs/guides/expression_language/cookbook#prompttemplate--llm--outputparser
+ */
+export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const message = formData.get("message") as string;
-    const images = formData.getAll("images") as File[];
-    const model = formData.get("model") as string || "gemini-pro";
+    const body = await req.json();
+    const messages = body.messages ?? [];
+    const formattedPreviousMessages = messages.slice(0, -1).map(formatMessage);
+    const currentMessageContent = messages[messages.length - 1].content;
+    const prompt = PromptTemplate.fromTemplate(TEMPLATE);
 
-    const { stream, handlers } = LangChainStream();
-
-    // Store the chat message
-    await prisma.chat.create({
-      data: {
-        userId: session.user.id,
-        message,
-        response: "",
-      },
+    /**
+     * Using Google's Generative AI model through LangChain.
+     * You can use different models like:
+     * - "gemini-pro"
+     * - "gemini-pro-vision" (for image capabilities)
+     * 
+     * See supported models at:
+     * https://js.langchain.com/docs/modules/model_io/models/chat/integrations/google_generativeai
+     */
+    const model = new ChatGoogleGenerativeAI({
+      modelName: "gemini-pro",
+      apiKey: process.env.GOOGLE_AI_API_KEY,
+      temperature: 0.8,
+      maxOutputTokens: 2048,
+      topK: 40,
+      topP: 0.8,
+      streaming: true,
     });
 
-    const genModel = genAI.getGenerativeModel({ model });
+    /**
+     * Chat models stream message chunks rather than bytes, so this
+     * output parser handles serialization and byte-encoding.
+     */
+    const outputParser = new HttpResponseOutputParser();
 
-    // Handle multimodal input
-    const parts: any[] = [{ text: message }];
-    
-    if (images.length > 0 && model === "gemini-pro-vision") {
-      for (const image of images) {
-        const imageData = await image.arrayBuffer();
-        parts.push({
-          inlineData: {
-            data: Buffer.from(imageData).toString("base64"),
-            mimeType: image.type
-          }
-        });
-      }
-    }
+    /**
+     * Can also initialize as:
+     *
+     * import { RunnableSequence } from "@langchain/core/runnables";
+     * const chain = RunnableSequence.from([prompt, model, outputParser]);
+     */
+    const chain = prompt.pipe(model).pipe(outputParser);
 
-    // Create agent graph for processing
-    const workflow = new AgentGraph()
-      .addNode("process_input", async (state: any) => {
-        const result = await genModel.generateContent(parts);
-        return {
-          ...state,
-          response: result.response.text(),
-        };
-      })
-      .addNode("generate_speech", async (state: any) => {
-        // Here you could integrate with a text-to-speech service
-        // For now, we'll just pass through the text response
-        handlers.onToken(state.response);
-        return state;
-      })
-      .setEntryPoint("process_input")
-      .addEdge("process_input", "generate_speech");
-
-    // Execute workflow
-    await workflow.execute({
-      message,
-      chatId: session.user.id,
+    const stream = await chain.stream({
+      chat_history: formattedPreviousMessages.join("\n"),
+      input: currentMessageContent,
     });
 
     return new StreamingTextResponse(stream);
-  } catch (error) {
-    console.error("Chat error:", error);
-    return new Response("Internal error", { status: 500 });
+  } catch (e: any) {
+    console.error("Error:", e);
+    return NextResponse.json({ error: e.message }, { status: e.status ?? 500 });
   }
-});
+}

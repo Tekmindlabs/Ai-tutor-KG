@@ -1,29 +1,27 @@
-// app/dashboard/page.tsx
-import { ServerAuthCheck } from "@/components/auth/server-auth-check";
-import { UserProfile } from "@/components/auth/user-profile";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
+import { Card } from "@/components/ui/card";
 
-export default async function DashboardPage() {
+export default async function Dashboard() {
+  const session = await getSession();
+  
+  if (!session?.user) {
+    redirect("/auth/signin");
+  }
+
   return (
-    <ServerAuthCheck>
-      <div className="container mx-auto p-6">
-        <div className="mb-8">
-          <UserProfile />
-        </div>
-        
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>Your learning progress will appear here</p>
-            </CardContent>
-          </Card>
-          
-          {/* Add more cards for dashboard content */}
-        </div>
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Welcome, {session.user.name}!</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-2">Recent Activity</h2>
+          <p className="text-muted-foreground">Start your learning journey</p>
+        </Card>
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-2">Progress</h2>
+          <p className="text-muted-foreground">Track your achievements</p>
+        </Card>
       </div>
-    </ServerAuthCheck>
+    </div>
   );
 }

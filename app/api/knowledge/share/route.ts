@@ -1,8 +1,6 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email/send";
-import { shareNotificationEmail } from "@/lib/email/templates";
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,22 +28,6 @@ export async function POST(req: NextRequest) {
         contentId,
         permissions,
       },
-    });
-
-    // Get content details for the email
-    const content = await prisma[contentType].findUnique({
-      where: { id: contentId },
-      select: { title: true }
-    });
-
-    // Send notification email
-    await sendEmail({
-      to: email,
-      template: shareNotificationEmail(
-        session.user.name || 'A user',
-        content?.title || 'content',
-        contentType
-      )
     });
 
     return Response.json(shared);

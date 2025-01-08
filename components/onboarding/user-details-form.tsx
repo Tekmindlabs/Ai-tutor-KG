@@ -1,18 +1,11 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { userDetailsSchema } from "@/lib/validations/onboarding";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 type UserDetailsFormProps = {
   initialData: any;
@@ -22,12 +15,32 @@ type UserDetailsFormProps = {
 export function UserDetailsForm({ initialData, onNext }: UserDetailsFormProps) {
   const form = useForm({
     resolver: zodResolver(userDetailsSchema.pick({ name: true, phoneNumber: true, age: true })),
-    defaultValues: initialData,
+    defaultValues: initialData || {
+      name: "",
+      phoneNumber: "",
+      age: 0,
+    },
   });
+
+  const onSubmit = async (data) => {
+    try {
+      const response = await fetch("/api/user/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error("Failed to save user details");
+
+      onNext(data);
+    } catch (error) {
+      console.error("Error saving user details:", error);
+    }
+  };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onNext)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"

@@ -1,24 +1,24 @@
-import { NextResponse } from 'next/server';
-import { KnowledgeService } from '@/lib/services/knowledge-service';
-import { handleMilvusError } from '@/lib/milvus/error-handler';
+import { NextRequest } from "next/server";
+import { auth } from "@/auth";
+import { searchKnowledgeBase } from "@/lib/knowledge/search";
 
-const knowledgeService = new KnowledgeService();
-
-export async function POST(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { userId, embedding } = await req.json();
-    
-    const results = await knowledgeService.searchRelatedContent(
-      userId,
-      embedding
-    );
+    const session = await auth();
+    if (!session?.user?.id) {
+      return new Response("Unauthorized", { status: 401 });
+    }
 
-    return NextResponse.json({ results });
+    const query = req.nextUrl.searchParams.get("q");
+    if (!query) {
+      return new Response("No query provided", { status: 400 });
+    }
+
+    const results = await searchKnowledgeBase(query, session.user.id);
+    
+    return Response.json(results);
   } catch (error) {
-    handleMilvusError(error);
-    return NextResponse.json(
-      { error: 'Search operation failed' },
-      { status: 500 }
-    );
+    console.error("Search error:", error);
+    return new Response("Internal error", { status: 500 });
   }
 }

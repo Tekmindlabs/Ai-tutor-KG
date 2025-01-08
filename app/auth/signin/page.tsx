@@ -14,20 +14,17 @@ export default function SignIn() {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-
+  
     try {
       const result = await signIn("email", {
         email,
-        redirect: false,
+        redirect: true, // Change to true
         callbackUrl: "/onboarding",
       });
-
-      if (result?.error) {
-        setError("Invalid email or verification failed");
-      }
+  
+      // Remove the error handling since we're redirecting
     } catch (error) {
       setError("Something went wrong. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };
